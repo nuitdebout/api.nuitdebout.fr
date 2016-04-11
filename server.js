@@ -20,6 +20,12 @@ var router = express.Router();              // get an instance of the express Ro
 
 app.use(compression());
 
+// Varnish header
+app.all('/*', function(req, res, next) {
+	res.header('Cache-Control', 'public, max-age=120');
+	next();
+});
+
 router.get('/bambuser', function(req, res) {
   var options = {
     uri: 'http://api.bambuser.com/broadcast.json',
