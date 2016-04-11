@@ -13,10 +13,10 @@ var port = process.env.PORT || 3000;        // set our port
 // =============================================================================
 var router = express.Router();              // get an instance of the express Router
 
-// app.use(function(req, res, next) {
-//   res.setHeader("Access-Control-Allow-Origin", "*");
-//   return next();
-// });
+app.use(function(req, res, next) {
+  res.setHeader("Access-Control-Allow-Origin", "http://www.nuitdebout.fr");
+  return next();
+});
 
 app.use(compression());
 
