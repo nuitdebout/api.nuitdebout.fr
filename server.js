@@ -3,11 +3,17 @@ var request = require('request'),
 	express = require('express'),
 	compression = require('compression'),
 	Twitter = require('twitter'),
-	cors = require('cors');
+	cors = require('cors'),
+	MediaWikiApi = require('mediawiki-api'),
+	http = require('http'),
+	https = require('https');
 
 var app = express();                 // define our app using express
 
-var port = process.env.PORT || 3000;        // set our port
+var WIKI_ADDR = "https://wiki.nuitdebout.fr/api.php"
+
+//var port = process.env.PORT || 3000;        // set our port
+var port = 3002;
 
 // ROUTES FOR OUR API
 // =============================================================================
@@ -86,6 +92,79 @@ router.get('/twitter', function (req, res) {
 			res.json(tweets);
 		}
 	});
+});
+
+// Wiki API code.
+// Some documentation:
+// The following calls are about AGS.
+// /wiki/api/City/lastCR -> Get the last 'Compte Rendu'
+// /wiki/api/City/allCR -> Get all the 'Compte Rendus'
+
+var		responses = [];
+var		titles = [];
+
+function	getCRcontent() {
+	url = titles.pop();
+
+	https.get(WIKI_ADDR + "?action=query&prop=revisions&rvprop=content&format=json&titles=" + url.replace(/ /g, "_"), function(res) {
+		var chunks = '';
+		res.on('data', function(d) {
+			chunks += d;
+		});
+		res.on('end', function() {
+			responses.push(chunks);
+			if (titles.length)
+				getCRcontent(titles);
+			else {
+				return responses;
+			}
+		});
+	});
+}
+
+router.get('/wiki/*', function(req, res) {
+	var		result = [];
+
+	res.setHeader('Content-Type', 'application/json');
+	args = req.params[0].split("/");
+	ville = args[0];
+	if (args[1] == "lastCR" || args[1] == "allCR") {
+		var options = {
+			uri: WIKI_ADDR + "?action=query&format=json&titles=Villes/"+ ville +"&prop=links&pllimit=500"
+		}
+		request(options, function(error, response, body) {
+			if (!error) {
+				body = JSON.parse(body);
+				for (var i in body["query"]) {
+					tmp = body["query"][i];
+						for (var i in tmp) {
+						tmp = tmp[i]["links"];
+						for (var i in tmp) {
+							if (tmp[i]["title"].indexOf("AG") > -1) {
+								if (args[1] == "lastCR")
+									titles[0] = tmp[i]["title"];
+								else
+									titles.push(tmp[i]["title"]);
+							}
+						}
+					}
+				}
+				if (titles.length == 0) {
+					res.json({"Error": "Ville introuvable !"});
+						return 0;
+				}
+				getCRcontent();
+				var check = setInterval(function() {
+					if (!titles.length && responses.length) {
+						clearInterval(check);
+						res.json(responses);
+					}
+				}, 100);
+			} else {
+				res.end({"Error": "Impossible de se connecter au wiki."});
+			}
+		});
+	}
 });
 
 // Enable CORS access
