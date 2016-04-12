@@ -13,7 +13,7 @@ var app = express();                 // define our app using express
 var WIKI_ADDR = "https://wiki.nuitdebout.fr/api.php"
 
 //var port = process.env.PORT || 3000;        // set our port
-var port = 3002;
+var port = 3000;
 
 // ROUTES FOR OUR API
 // =============================================================================
