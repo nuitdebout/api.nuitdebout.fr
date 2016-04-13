@@ -148,7 +148,8 @@ router.get('/wiki/cities', function(req, res) {
    wiki_client.api.call({
    	action: "query",
    	list: "recentchanges",
-   	rclimit: 100
+   	rclimit: 100,
+   	rctoponly: true
    }, function(err, changes) {
      var titles = []
        , matches = [];
