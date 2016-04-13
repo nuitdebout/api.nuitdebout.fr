@@ -145,11 +145,16 @@ router.get('/wiki/cities', function(req, res) {
    var yesterday = new Date();
    yesterday.setDate(yesterday.getDate() - 1);
 
-   wiki_client.getRecentChanges(yesterday.getTime(), function(err, changes) {
+   wiki_client.api.call({
+   	action: "query",
+   	list: "recentchanges",
+   	rclimit: 100
+   }, function(err, changes) {
      var titles = []
        , matches = [];
-     changes.forEach(function(change) {
-       if (change.type == 'new' && (change.title.match(/Villes\/.*\/CR/g) || change.title.match(/Villes\/.*\/AG/g))) {
+     for(var i in changes.recentchanges) {
+       var change = changes.recentchanges[i];
+       if ((change.title.match(/Villes\/.*\/CR/g) || change.title.match(/Villes\/.*\/AG/g))) {
          var label, city;
          if (matches = /^Villes\/([^\/]+)/g.exec(change.title)) {
            city = matches[1];
@@ -161,11 +166,12 @@ router.get('/wiki/cities', function(req, res) {
            titles.push({
              url: 'https://wiki.nuitdebout.fr/index.php?title='+change.title,
              city: city,
-             label: label
+             label: label,
+             timestamp: change.timestamp
            });
          }
        }
-     });
+     };
      res.json(titles);
    })
  });
