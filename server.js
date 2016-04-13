@@ -4,13 +4,13 @@ var request = require('request'),
 	compression = require('compression'),
 	Twitter = require('twitter'),
 	cors = require('cors'),
-	MediaWikiApi = require('mediawiki-api'),
+	nodemw = require('nodemw'),
 	http = require('http'),
 	https = require('https');
 
 var app = express();                 // define our app using express
 
-var WIKI_ADDR = "https://wiki.nuitdebout.fr/api.php"
+var WIKI_ADDR = 'https://wiki.nuitdebout.fr/api.php';
 
 //var port = process.env.PORT || 3000;        // set our port
 var port = 3000;
@@ -99,10 +99,6 @@ router.get('/twitter', function (req, res) {
 // The following calls are about AGS.
 // /wiki/api/City/lastCR -> Get the last 'Compte Rendu'
 // /wiki/api/City/allCR -> Get all the 'Compte Rendus'
-
-var		responses = [];
-var		titles = [];
-
 function	getCRcontent() {
 	url = titles.pop();
 
@@ -121,10 +117,64 @@ function	getCRcontent() {
 		});
 	});
 }
+var wiki_client = new nodemw({
+  server: 'wiki.nuitdebout.fr',  // host name of MediaWiki-powered site
+  path: '/',                  // path to api.php script
+  debug: true                 // is more verbose when set to true
+});
+
+router.get('/wiki/cities', function(req, res) {
+   var cities = [];
+   wiki_client.getArticle('Villes', function(err, article) {
+     var matches = article.match(/\[\[([^\]]+)/g).forEach(function(city) {
+       city = city.replace('[[', '');
+       var pieces = city.split('|')
+         , uri = pieces[0]
+         , label = pieces[1];
+       cities.push({
+         uri: uri,
+         url: 'https://wiki.nuitdebout.fr/index.php?title='+uri,
+         label: label
+       });
+     });
+     res.json(cities);
+   });
+ });
+
+ router.get('/wiki/last_crs', function(req, res) {
+   var yesterday = new Date();
+   yesterday.setDate(yesterday.getDate() - 1);
+
+   wiki_client.getRecentChanges(yesterday.getTime(), function(err, changes) {
+     var titles = []
+       , matches = [];
+     changes.forEach(function(change) {
+       if (change.type == 'new' && (change.title.match(/Villes\/.*\/CR/g) || change.title.match(/Villes\/.*\/AG/g))) {
+         var label, city;
+         if (matches = /^Villes\/([^\/]+)/g.exec(change.title)) {
+           city = matches[1];
+         }
+         if (matches = /.*\/(.*)$/g.exec(change.title)) {
+           label = matches[1];
+         }
+         if (city && label) {
+           titles.push({
+             url: 'https://wiki.nuitdebout.fr/index.php?title='+change.title,
+             city: city,
+             label: label
+           });
+         }
+       }
+     });
+     res.json(titles);
+   })
+ });
 
 router.get('/wiki/*', function(req, res) {
 	var		result = [];
 
+  var		responses = [];
+  var		titles = [];
 	res.setHeader('Content-Type', 'application/json');
 	args = req.params[0].split("/");
 	ville = args[0];
@@ -153,7 +203,7 @@ router.get('/wiki/*', function(req, res) {
 					res.json({"Error": "Ville introuvable !"});
 						return 0;
 				}
-				getCRcontent();
+				getCRcontent(responses);
 				var check = setInterval(function() {
 					if (!titles.length && responses.length) {
 						clearInterval(check);
