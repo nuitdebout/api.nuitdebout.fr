@@ -37,7 +37,7 @@ router.get('/bambuser', function(req, res) {
 		uri: 'http://api.bambuser.com/broadcast.json',
 		qs: {
 			api_key: process.env.BAMBUSER_APIKEY,
-			tag: 'NuitDeboutLive',
+			tag: 'NuitDeboutLive,NuitDebout',
 			type: 'live'
 		}
 	}
